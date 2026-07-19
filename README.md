@@ -1,4 +1,4 @@
-# ⚡ Grid Stress Explorer
+# Grid Stress Explorer
 
 A small curiosity project that visualizes how the German electricity grid
 actually behaves — hour by hour — using **real, public data**.
@@ -12,13 +12,25 @@ negative spot prices, fossil ramp-ups, near-zero residual load.
 
 - Pulls generation stack, load, residual load and spot price for any date range
   (15-minute resolution) from the Fraunhofer ISE **Energy-Charts API**.
-- Stacks renewables (green) vs fossils (red) so the balance is visible at a glance.
-- Plots load vs **residual load** (Load − renewable generation) — the gap fossils
-  must fill.
-- Shades / lists **stress events** it auto-detects:
+- Shows a true **stacked-area** generation mix where every source has its own
+  distinct color (Solar = gold, Wind offshore = deep blue, Wind onshore = light
+  blue, fossils in reds/browns) so renewables vs fossils and source-vs-source
+  read apart at a glance. Load and residual load are overlaid reference lines.
+- Each plot section has its **own time-range dropdown** (Day / Week / Month /
+  Year / 2 Years) — no global control, no sidebar widgets — so you pick the
+  span that fits each view.
+- Breaks the **daily shape** down per renewable (stacked bars by hour of day)
+  and the **weekly shape** by day of week, revealing solar's midday spike vs
+  wind's steadier profile.
+- Plots the **renewable-share trend** over time with a rolling mean.
+- For long ranges, shows the **relative active time** of renewables: an
+  Hour x Month heatmap of average renewable share, plus a per-renewable
+  "active by hour" stacked bar (a source is "active" when its output beats its
+  own median at that hour).
+- Auto-detects and lists / counts **stress events**:
   - `NEGATIVE_PRICE` — spot price < 0 EUR/MWh (oversupply)
-  - `NEAR_ZERO_RESIDUAL` — residual load ≈ 0 (system tightness)
-  - `FOSSIL_RAMP_UP` — large hour-over-hour fossil increase
+  - `NEAR_ZERO_RESIDUAL` — residual load ~ 0 (system tightness)
+  - `FOSSIL_RAMP_UP` — large 15-min fossil increase (flexibility need)
 
 ## Run it
 
