@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Cached API responses (large, regenerable)
+cache/
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Local secrets (none currently, but safe)
+.env
