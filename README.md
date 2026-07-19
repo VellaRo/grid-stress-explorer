@@ -57,18 +57,3 @@ Methodology:
   "how much must non-renewables cover" metric and is the single most
   informative number in the dataset.
 - Nuclear = 0 (Germany shut the last reactors down in April 2023).
-
-## Why I built this
-
-I'm interested in the intersection of energy regulation and the data/IT systems
-that make it work — the kind of work done at the Bundesnetzagentur, e.g.
-Beschlusskammer 6 ("Regulierung Elektrizitätsnetze"). But "interested in
-regulation" is abstract until you look at the actual physics of the grid.
-
-This tool started as a personal question: *what does a calm evening vs a stormy
-day actually look like on the wire?* The answer — fossils breathing in and out
-with the sun, prices going negative at solar noon, imports covering the gaps —
-is the concrete reality behind every Netzentgelte and Netzzugang decision.
-Building it forced me to actually understand residual load, dispatchability and
-market pricing, which is the same fluency the role asks for. It's a hobby
-project, not a certified regulatory tool — and that's the point.
