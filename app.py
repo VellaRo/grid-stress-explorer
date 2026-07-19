@@ -68,6 +68,13 @@ RESIDUAL_COLOR = "orange"   # reference line: demand minus renewables
 
 # The five time spans offered by every per-plot dropdown.
 RANGE_OPTS = ["Day", "Week", "Month", "Year", "2 Years"]
+# Ranges that make sense for a *daily-shape* view: longer spans average away
+# seasonality and smear the 24h profile (e.g. a Year mixes sunny summer noons
+# with dark winter evenings, flattening the solar signal).
+SHORT_RANGE_OPTS = ["Day", "Week", "Month"]
+# Ranges for views that need a long span to be meaningful: weekday pattern
+# (needs >=2 weeks) and the seasonal "relative active time" view (needs >=40 days).
+LONG_RANGE_OPTS = ["Month", "Year", "2 Years"]
 
 
 def _range_dates(opt: str) -> tuple[date, date]:
@@ -115,9 +122,15 @@ def get_range(opt: str) -> tuple[pd.DataFrame, pd.DataFrame, int, str]:
     return df, ev, span, grain
 
 
-def section_picker(label: str, default: str) -> str:
-    """Render a per-plot time-range dropdown and return its current value."""
-    return st.selectbox(label, options=RANGE_OPTS, index=RANGE_OPTS.index(default),
+def section_picker(label: str, default: str, options: list[str] | None = None) -> str:
+    """Render a per-plot time-range dropdown and return its current value.
+
+    `options` lets a section restrict the offered ranges when longer spans
+    would be meaningless (e.g. a "daily shape" averages away seasonality on
+    Year/2-Year windows, so it only offers Day/Week/Month).
+    """
+    options = options or RANGE_OPTS
+    return st.selectbox(label, options=options, index=options.index(default),
                         key=f"pick_{label}")
 
 
@@ -278,7 +291,7 @@ if "renewable_share_load" in df3_g.columns:
 # profile separate cleanly.
 # ==========================================================================
 st.header("Daily shape — average by hour of day")
-opt4 = section_picker("Daily shape — range", "Month")
+opt4 = section_picker("Daily shape — range", "Week", options=SHORT_RANGE_OPTS)
 df4, _, span4, _ = get_range(opt4)
 if "renewable_share_load" in df4.columns:
     hr = df4.copy(); hr["hour"] = hr.index.hour
@@ -320,7 +333,7 @@ if "renewable_share_load" in df4.columns:
 # 5) WEEKLY SHAPE — average by day of week (needs >= ~2 weeks of data).
 # ==========================================================================
 st.header("Weekly shape — average by day of week")
-opt5 = section_picker("Weekly shape — range", "Month")
+opt5 = section_picker("Weekly shape — range", "Month", options=LONG_RANGE_OPTS)
 df5, _, span5, _ = get_range(opt5)
 if span5 >= 13 and "renewable_share_load" in df5.columns:
     wk = df5.copy(); wk["dow"] = wk.index.dayofweek
@@ -357,7 +370,7 @@ elif span5 < 13:
 #   (b) Per-renewable "active" share by hour (stacked).
 # ==========================================================================
 st.header("Relative active time of renewables")
-opt6 = section_picker("Active time — range", "2 Years")
+opt6 = section_picker("Active time — range", "2 Years", options=LONG_RANGE_OPTS)
 df6, _, span6, _ = get_range(opt6)
 if span6 < 40:
     st.info("Pick Month / Year / 2 Years to see the seasonal 'relative active time' view.")
@@ -395,17 +408,17 @@ elif "renewable_share_load" in df6.columns:
     st.caption("Brighter = renewables dominate more often. Summer noons go net-green "
                "(share >100% = export); winter evenings are the fossil/import backstop.")
 
-    # --- (b) Per-renewable "active" share by hour (stacked) ---
-    # A renewable is "active" at an hour when its own output there exceeds its
-    # overall median (i.e. it's pulling above its typical weight). Stacked per
-    # hour shows WHICH source drives the renewable-dominated periods.
-    st.subheader(f"Share of days each renewable is 'active' — by hour")
+    # --- (b) Per-renewable contribution by hour (stacked) ---
+    # For each hour, the % of days where that renewable's output beats its own
+    # overall median — i.e. it's pulling above its typical weight. Stacked per
+    # hour, this shows WHICH source drives the green periods (solar at noon,
+    # wind in the evening), a different question from the aggregate heatmap.
+    st.subheader("Renewable source by hour — share of days above its typical output")
     st.caption(
-        f"A renewable is 'active' at an hour when its own output there exceeds its overall "
-        f"median (i.e. it's pulling above its typical weight). Stacked per hour shows which "
-        f"source drives the renewable-dominated periods — e.g. solar at noon, wind in the "
-        f"evening. Total height is not the >{ACTIVE_THR_PCT:.0f}% share bar; it's the mix of "
-        f"active sources."
+        f"A renewable counts as 'above typical' at an hour when its own output there exceeds "
+        f"its overall median. Stacked per hour shows which source drives the green periods "
+        f"— e.g. solar at noon, wind in the evening. This is source attribution, not the "
+        f"aggregate >{ACTIVE_THR_PCT:.0f}% share shown in the heatmap above."
     )
     act = df6.copy(); act["hour"] = act.index.hour
     renew_in = [c for c in RENEWABLE_KEYS if c in act.columns]
@@ -425,33 +438,11 @@ elif "renewable_share_load" in df6.columns:
                                name=c, marker_color=col, opacity=0.9))
     fig_a.update_layout(height=340, margin=dict(l=40, r=20, t=20, b=20),
                         barmode="stack", legend=dict(orientation="h", y=-0.08),
-                        yaxis_title="% of days that source is 'active'",
+                        yaxis_title="% of days above its typical output",
                         xaxis_title="Hour of day")
     fig_a.update_yaxes(range=[0, 100])
     st.plotly_chart(fig_a, width="stretch")
 
-
-# ==========================================================================
-# INSIGHTS — auto-generated plain-language takeaways from the data.
-# ==========================================================================
-st.header("What the data says")
-# Use the widest selected range (the trend picker) for context.
-base_df, _, _, _ = get_range(opt3)
-insights = []
-s_base = summarize(base_df)
-if s_base['avg_renewable_share'] is not None:
-    insights.append(f"Over the **{opt3}** window renewables covered **{s_base['avg_renewable_share']}%** of load on average.")
-if s_base['neg_price_hours']:
-    insights.append(f"Spot price went negative for **{s_base['neg_price_hours']:,}** intervals — oversupply from weather-driven renewables.")
-if "renewable_share_load" in base_df.columns:
-    yr = base_df.copy(); yr["month"] = yr.index.month
-    by_m = yr.groupby("month")["renewable_share_load"].mean() * 100
-    best, worst = int(by_m.idxmax()), int(by_m.idxmin())
-    ml = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    insights.append(f"Highest renewable-share month: **{ml[best-1]} ({by_m[best]:.0f}%)**; "
-                    f"lowest: **{ml[worst-1]} ({by_m[worst]:.0f}%)**.")
-for ins in insights:
-    st.markdown(f"- {ins}")
 
 st.markdown("---")
 st.caption(
